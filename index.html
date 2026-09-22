@@ -28,6 +28,48 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
+        /* =========================
+           НАСТРОЙКИ
+           ========================= */
+
+        .settings {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .setting {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .setting label {
+            font-size: 12px;
+            color: #888;
+            font-weight: bold;
+        }
+
+        .setting select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .setting select:focus {
+            border-color: #999;
+        }
+
+        /* =========================
+           ШАПКА
+           ========================= */
+
         .calendar-header {
             display: flex;
             justify-content: space-between;
@@ -54,6 +96,10 @@
         .arrow:hover {
             background: #ddd;
         }
+
+        /* =========================
+           КАЛЕНДАРЬ
+           ========================= */
 
         .weekdays,
         .days {
@@ -116,16 +162,10 @@
             font-weight: bold;
         }
 
-        .empty {
-            cursor: default;
-            background: transparent !important;
-        }
+        /* =========================
+           ЛЕГЕНДА
+           ========================= */
 
-        .empty:hover {
-            filter: none;
-        }
-
-        /* Легенда */
         .legend {
             display: flex;
             justify-content: center;
@@ -165,15 +205,53 @@
 
 <div class="calendar">
 
+    <!-- НАСТРОЙКИ -->
+
+    <div class="settings">
+
+        <div class="setting">
+            <label for="shiftCount">
+                Количество смен
+            </label>
+
+            <select id="shiftCount">
+                <option value="2">2 смены</option>
+                <option value="3">3 смены</option>
+            </select>
+        </div>
+
+        <div class="setting">
+            <label for="currentShift">
+                Смена текущей недели
+            </label>
+
+            <select id="currentShift"></select>
+        </div>
+
+    </div>
+
+
+    <!-- ШАПКА -->
+
     <div class="calendar-header">
-        <button class="arrow" id="prev">←</button>
+
+        <button class="arrow" id="prev">
+            ←
+        </button>
 
         <h2 id="monthYear"></h2>
 
-        <button class="arrow" id="next">→</button>
+        <button class="arrow" id="next">
+            →
+        </button>
+
     </div>
 
+
+    <!-- ДНИ НЕДЕЛИ -->
+
     <div class="weekdays">
+
         <div class="weekday">Пн</div>
         <div class="weekday">Вт</div>
         <div class="weekday">Ср</div>
@@ -181,41 +259,51 @@
         <div class="weekday">Пт</div>
         <div class="weekday">Сб</div>
         <div class="weekday">Вс</div>
+
     </div>
+
+
+    <!-- ДНИ -->
 
     <div class="days" id="days"></div>
 
-    <div class="legend">
-        <div class="legend-item">
-            <div class="legend-color legend-lunch"></div>
-            Обеденная
-        </div>
 
-        <div class="legend-item">
-            <div class="legend-color legend-morning"></div>
-            Утренняя
-        </div>
+    <!-- ЛЕГЕНДА -->
 
-        <div class="legend-item">
-            <div class="legend-color legend-night"></div>
-            Ночная
-        </div>
-    </div>
+    <div class="legend" id="legend"></div>
 
 </div>
 
 
 <script>
 
-    const monthYear = document.getElementById("monthYear");
-    const daysContainer = document.getElementById("days");
+    const monthYear =
+        document.getElementById("monthYear");
 
-    const prevButton = document.getElementById("prev");
-    const nextButton = document.getElementById("next");
+    const daysContainer =
+        document.getElementById("days");
+
+    const prevButton =
+        document.getElementById("prev");
+
+    const nextButton =
+        document.getElementById("next");
+
+    const shiftCountSelect =
+        document.getElementById("shiftCount");
+
+    const currentShiftSelect =
+        document.getElementById("currentShift");
+
+    const legend =
+        document.getElementById("legend");
 
 
-    let currentDate = new Date();
-
+    /*
+        ==========================================
+        МЕСЯЦЫ
+        ==========================================
+    */
 
     const months = [
         "Январь",
@@ -235,138 +323,510 @@
 
     /*
         ==========================================
-        НАСТРОЙКА ЦИКЛА СМЕН
+        СМЕНЫ
         ==========================================
 
-        24 августа 2026 = Обеденная
-        31 августа 2026 = Утренняя
-        7 сентября 2026 = Ночная
+        3 смены:
 
-        Затем цикл повторяется.
+        Утренняя → Ночная → Обеденная
+
+        2 смены:
+
+        Утренняя → Обеденная
     */
 
-    const shiftStart = new Date(2026, 7, 24);
+    const shiftSets = {
 
-    const shifts = [
-        {
-            name: "Обеденная",
-            className: "shift-lunch"
-        },
-        {
-            name: "Утренняя",
-            className: "shift-morning"
-        },
-        {
-            name: "Ночная",
-            className: "shift-night"
-        }
-    ];
+        3: [
+            {
+                id: "morning",
+                name: "Утренняя",
+                className: "shift-morning"
+            },
+
+            {
+                id: "night",
+                name: "Ночная",
+                className: "shift-night"
+            },
+
+            {
+                id: "lunch",
+                name: "Обеденная",
+                className: "shift-lunch"
+            }
+        ],
+
+        2: [
+            {
+                id: "morning",
+                name: "Утренняя",
+                className: "shift-morning"
+            },
+
+            {
+                id: "lunch",
+                name: "Обеденная",
+                className: "shift-lunch"
+            }
+        ]
+
+    };
 
 
     /*
-        Получаем понедельник недели,
-        к которой относится дата.
+        ==========================================
+        LOCAL STORAGE
+        ==========================================
     */
+
+    const storageKey =
+        "shift-calendar-settings-v2";
+
+
+    let savedSettings = {};
+
+    try {
+
+        savedSettings =
+            JSON.parse(
+                localStorage.getItem(storageKey) || "{}"
+            );
+
+    } catch (error) {
+
+        savedSettings = {};
+
+    }
+
+
+    /*
+        Количество смен
+    */
+
+    let shiftCount =
+        Number(savedSettings.shiftCount) || 3;
+
+
+    /*
+        Смена текущей недели
+    */
+
+    let currentShiftId =
+        savedSettings.currentShiftId || "morning";
+
+
+    /*
+        ==========================================
+        ТЕКУЩАЯ ДАТА
+        ==========================================
+    */
+
+    let currentDate = new Date();
+
+    const today = new Date();
+
+
+    /*
+        ==========================================
+        ПОНЕДЕЛЬНИК НЕДЕЛИ
+        ==========================================
+    */
+
     function getMonday(date) {
 
-        const result = new Date(date);
+        const result =
+            new Date(date);
 
-        const day = result.getDay();
+        const day =
+            result.getDay();
 
-        const difference = day === 0 ? -6 : 1 - day;
+        const difference =
+            day === 0
+                ? -6
+                : 1 - day;
 
-        result.setDate(result.getDate() + difference);
+        result.setDate(
+            result.getDate() + difference
+        );
 
-        result.setHours(0, 0, 0, 0);
+        result.setHours(
+            0,
+            0,
+            0,
+            0
+        );
 
         return result;
     }
 
 
     /*
-        Определяем смену для конкретной недели.
+        ==========================================
+        ПОНЕДЕЛЬНИК ТЕКУЩЕЙ НЕДЕЛИ
+        ==========================================
     */
-    function getShiftForDate(date) {
 
-        const monday = getMonday(date);
+    const currentWeek =
+        getMonday(today);
 
-        const startMonday = getMonday(shiftStart);
 
-        // Разница между неделями в миллисекундах
+    /*
+        ==========================================
+        РАЗНИЦА МЕЖДУ НЕДЕЛЯМИ
+        ==========================================
+    */
+
+    function getWeekDifference(
+        firstWeek,
+        secondWeek
+    ) {
+
         const difference =
-            monday.getTime() - startMonday.getTime();
+            firstWeek.getTime() -
+            secondWeek.getTime();
 
-        // Количество полных недель
-        const weeks =
-            Math.round(
-                difference / (1000 * 60 * 60 * 24 * 7)
-            );
+        return Math.round(
+            difference /
+            (1000 * 60 * 60 * 24 * 7)
+        );
 
-        // Получаем номер смены 0, 1 или 2
-        const shiftIndex =
-            ((weeks % shifts.length) + shifts.length)
-            % shifts.length;
-
-        return shifts[shiftIndex];
     }
 
 
+    /*
+        ==========================================
+        СМЕНА ДЛЯ КОНКРЕТНОЙ ДАТЫ
+        ==========================================
+    */
+
+    function getShiftForDate(date) {
+
+        const set =
+            shiftSets[shiftCount];
+
+
+        /*
+            Индекс выбранной текущей смены
+        */
+
+        const currentShiftIndex =
+            set.findIndex(
+                shift =>
+                    shift.id === currentShiftId
+            );
+
+
+        const anchorIndex =
+            currentShiftIndex >= 0
+                ? currentShiftIndex
+                : 0;
+
+
+        /*
+            Понедельник недели
+        */
+
+        const week =
+            getMonday(date);
+
+
+        /*
+            Разница в неделях относительно
+            текущей недели
+        */
+
+        const weekDifference =
+            getWeekDifference(
+                week,
+                currentWeek
+            );
+
+
+        /*
+            Определяем смену.
+
+            Например, 2 смены:
+
+            текущая       Утренняя
+            +1 неделя    Обеденная
+            +2 недели    Утренняя
+            +3 недели    Обеденная
+
+            И наоборот для прошлых недель.
+        */
+
+        const shiftIndex =
+            (
+                anchorIndex +
+                weekDifference
+            ) % set.length;
+
+
+        /*
+            Исправляем отрицательный индекс
+        */
+
+        const normalizedIndex =
+            (
+                shiftIndex +
+                set.length
+            ) % set.length;
+
+
+        return set[normalizedIndex];
+
+    }
+
+
+    /*
+        ==========================================
+        ЗАПОЛНЯЕМ SELECT
+        ==========================================
+    */
+
+    function fillShiftSelect() {
+
+        currentShiftSelect.innerHTML = "";
+
+
+        const set =
+            shiftSets[shiftCount];
+
+
+        set.forEach(shift => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                shift.id;
+
+            option.textContent =
+                shift.name;
+
+            currentShiftSelect.appendChild(
+                option
+            );
+
+        });
+
+
+        /*
+            Если выбранной смены нет
+            в новом режиме — берём первую.
+        */
+
+        const exists =
+            set.some(
+                shift =>
+                    shift.id === currentShiftId
+            );
+
+
+        if (!exists) {
+
+            currentShiftId =
+                set[0].id;
+
+        }
+
+
+        currentShiftSelect.value =
+            currentShiftId;
+
+    }
+
+
+    /*
+        ==========================================
+        СОХРАНЕНИЕ НАСТРОЕК
+        ==========================================
+    */
+
+    function saveSettings() {
+
+        localStorage.setItem(
+            storageKey,
+            JSON.stringify({
+                shiftCount,
+                currentShiftId
+            })
+        );
+
+    }
+
+
+    /*
+        ==========================================
+        ЛЕГЕНДА
+        ==========================================
+    */
+
+    function renderLegend() {
+
+        legend.innerHTML = "";
+
+
+        const set =
+            shiftSets[shiftCount];
+
+
+        set.forEach(shift => {
+
+            const item =
+                document.createElement("div");
+
+            item.className =
+                "legend-item";
+
+
+            const color =
+                document.createElement("div");
+
+            color.className =
+                "legend-color";
+
+
+            if (shift.id === "morning") {
+
+                color.classList.add(
+                    "legend-morning"
+                );
+
+            }
+
+            if (shift.id === "night") {
+
+                color.classList.add(
+                    "legend-night"
+                );
+
+            }
+
+            if (shift.id === "lunch") {
+
+                color.classList.add(
+                    "legend-lunch"
+                );
+
+            }
+
+
+            item.appendChild(color);
+
+            item.appendChild(
+                document.createTextNode(
+                    shift.name
+                )
+            );
+
+
+            legend.appendChild(item);
+
+        });
+
+    }
+
+
+    /*
+        ==========================================
+        ОТРИСОВКА КАЛЕНДАРЯ
+        ==========================================
+    */
+
     function renderCalendar() {
 
-        const year = currentDate.getFullYear();
+        const year =
+            currentDate.getFullYear();
 
-        const month = currentDate.getMonth();
+        const month =
+            currentDate.getMonth();
 
 
-        // Название месяца
+        /*
+            Название месяца
+        */
+
         monthYear.textContent =
             `${months[month]} ${year}`;
 
 
-        // Очищаем календарь
+        /*
+            Очищаем календарь
+        */
+
         daysContainer.innerHTML = "";
 
 
         /*
             Первый день месяца
         */
+
         let firstDay =
-            new Date(year, month, 1).getDay();
+            new Date(
+                year,
+                month,
+                1
+            ).getDay();
 
 
-        // Делаем понедельник первым днем
+        /*
+            Понедельник — первый день недели
+        */
+
         if (firstDay === 0) {
+
             firstDay = 7;
+
         }
 
 
         /*
-            Количество дней в месяце
+            Количество дней месяца
         */
+
         const daysInMonth =
-            new Date(year, month + 1, 0).getDate();
+            new Date(
+                year,
+                month + 1,
+                0
+            ).getDate();
 
 
         /*
-            Пустые клетки перед первым днем
+            Пустые клетки перед первым
+            числом месяца.
+
+            Даты предыдущего месяца
+            здесь НЕ создаются.
         */
-        for (let i = 1; i < firstDay; i++) {
+
+        for (
+            let i = 1;
+            i < firstDay;
+            i++
+        ) {
 
             const emptyDay =
                 document.createElement("div");
 
             emptyDay.classList.add(
-                "day",
-                "empty"
+                "day"
             );
 
-            daysContainer.appendChild(emptyDay);
+            daysContainer.appendChild(
+                emptyDay
+            );
+
         }
 
 
         /*
-            Создаём дни
+            Создаём только дни
+            текущего месяца.
         */
+
         for (
             let day = 1;
             day <= daysInMonth;
@@ -377,38 +837,48 @@
                 document.createElement("div");
 
 
-            dayElement.classList.add("day");
+            dayElement.classList.add(
+                "day"
+            );
 
-            dayElement.textContent = day;
+
+            dayElement.textContent =
+                day;
 
 
             /*
-                Создаём полноценную дату
+                Полная дата
             */
+
             const date =
-                new Date(year, month, day);
+                new Date(
+                    year,
+                    month,
+                    day
+                );
 
 
             /*
-                Получаем смену этой недели
+                Получаем смену
+                этой недели.
             */
+
             const shift =
                 getShiftForDate(date);
 
 
             /*
-                Добавляем цвет смены
+                Цвет смены
             */
+
             dayElement.classList.add(
                 shift.className
             );
 
 
             /*
-                Проверяем сегодняшний день
+                Сегодня
             */
-            const today = new Date();
-
 
             if (
                 day === today.getDate() &&
@@ -416,13 +886,17 @@
                 year === today.getFullYear()
             ) {
 
-                dayElement.classList.add("today");
+                dayElement.classList.add(
+                    "today"
+                );
+
             }
 
 
             /*
-                При наведении можно посмотреть смену
+                Название смены при наведении
             */
+
             dayElement.title =
                 shift.name;
 
@@ -430,13 +904,94 @@
             daysContainer.appendChild(
                 dayElement
             );
+
         }
+
     }
 
 
     /*
-        Предыдущий месяц
+        ==========================================
+        ИЗМЕНЕНИЕ КОЛИЧЕСТВА СМЕН
+        ==========================================
     */
+
+    shiftCountSelect.addEventListener(
+        "change",
+        () => {
+
+            shiftCount =
+                Number(
+                    shiftCountSelect.value
+                );
+
+
+            /*
+                Проверяем, существует ли
+                выбранная смена в новом цикле.
+            */
+
+            const exists =
+                shiftSets[shiftCount].some(
+                    shift =>
+                        shift.id === currentShiftId
+                );
+
+
+            /*
+                В нашем случае при переходе
+                3 → 2 Ночная исчезает,
+                поэтому выбираем Утреннюю.
+            */
+
+            if (!exists) {
+
+                currentShiftId =
+                    "morning";
+
+            }
+
+
+            fillShiftSelect();
+
+            renderLegend();
+
+            saveSettings();
+
+            renderCalendar();
+
+        }
+    );
+
+
+    /*
+        ==========================================
+        ИЗМЕНЕНИЕ ТЕКУЩЕЙ СМЕНЫ
+        ==========================================
+    */
+
+    currentShiftSelect.addEventListener(
+        "change",
+        () => {
+
+            currentShiftId =
+                currentShiftSelect.value;
+
+
+            saveSettings();
+
+            renderCalendar();
+
+        }
+    );
+
+
+    /*
+        ==========================================
+        ПРЕДЫДУЩИЙ МЕСЯЦ
+        ==========================================
+    */
+
     prevButton.addEventListener(
         "click",
         () => {
@@ -446,13 +1001,17 @@
             );
 
             renderCalendar();
+
         }
     );
 
 
     /*
-        Следующий месяц
+        ==========================================
+        СЛЕДУЮЩИЙ МЕСЯЦ
+        ==========================================
     */
+
     nextButton.addEventListener(
         "click",
         () => {
@@ -462,13 +1021,24 @@
             );
 
             renderCalendar();
+
         }
     );
 
 
     /*
-        Первый запуск
+        ==========================================
+        ЗАПУСК
+        ==========================================
     */
+
+    shiftCountSelect.value =
+        shiftCount;
+
+    fillShiftSelect();
+
+    renderLegend();
+
     renderCalendar();
 
 </script>
